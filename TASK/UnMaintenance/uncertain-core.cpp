@@ -28,7 +28,7 @@ Uncertain_Core::~Uncertain_Core()
 void Uncertain_Core::get_core() {
 	//int corenum;
 	//vec_i corenum_record(max_degree + 1, 0);
-	int maxcore = 0;	
+	int maxcore = 0;
 	core = new Int[n];
 	memset(core, 0, sizeof(Int) * n);
 	vec_i d(n);
@@ -244,7 +244,7 @@ void Uncertain_Core::insert_core_compare() {
 		bool compare = areVectorsEqual(result_1, result_2);
 		if (!compare) {
 			cout << "insert后，数组是否相同：" << compare << endl;
-		}		
+		}
 	}
 	cout << "insert_compute_candidate_time:" << candidate_tm << endl;
 	cout << "insert_threshold_recompute_time:" << recompute_tm << endl;

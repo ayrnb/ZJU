@@ -1,4 +1,4 @@
-ï»¿#include "uncertain-core.h"
+#include "uncertain-core.h"
 #include "probability-change-core.h"
 
 std::string getParentDirectory(const std::string& filePath) {
@@ -17,15 +17,15 @@ void load_cores(const char* str, vec_i& cores)
 
 	int n = 0;
 	FILE* in = NULL;
-	if (txt != NULL) in = fopen(str, "r");	//ä»¥æ–‡æœ¬è¯»å–æ¨¡å¼æ‰“å¼€æ–‡ä»¶
-	else in = fopen(str, "rb");		//ä»¥äºŒè¿›åˆ¶æ¨¡å¼æ‰“å¼€æ–‡ä»¶
+	if (txt != NULL) in = fopen(str, "r");	//ÒÔÎÄ±¾¶ÁÈ¡Ä£Ê½´ò¿ªÎÄ¼ş
+	else in = fopen(str, "rb");		//ÒÔ¶ş½øÖÆÄ£Ê½´ò¿ªÎÄ¼ş
 
 	if (in == NULL) {
 		printf("No such file: %s\n", str);
 		exit(1);
 	}
 	if (txt != NULL) {
-		int x = fscanf(in, "%d", &n);	//xè¡¨ç¤ºæˆåŠŸè¯»å–çš„é¡¹æ•°
+		int x = fscanf(in, "%d", &n);	//x±íÊ¾³É¹¦¶ÁÈ¡µÄÏîÊı
 		printf("file=%s, n=%d\n", str, n);
 		cores.resize(n);
 		for (int i = 0; i < n; ++i)
@@ -41,7 +41,7 @@ void load_cores(const char* str, vec_i& cores)
 	fclose(in);
 }
 
-void prinf_core(const char* str, vec_i& cores)	//é¦–å…ˆå­˜å‚¨é¡¶ç‚¹ä¸ªæ•°nï¼Œç„¶åä¾æ¬¡å­˜å‚¨c(i)
+void prinf_core(const char* str, vec_i& cores)	//Ê×ÏÈ´æ´¢¶¥µã¸öÊın£¬È»ºóÒÀ´Î´æ´¢c(i)
 {
 	const char* txt = strstr(str, "txt");
 	const char* bin = strstr(str, "bin");
@@ -51,8 +51,8 @@ void prinf_core(const char* str, vec_i& cores)	//é¦–å…ˆå­˜å‚¨é¡¶ç‚¹ä¸ªæ•°nï¼Œç„¶
 	}
 	int n = cores.size();
 	FILE* in = NULL;
-	if (bin != NULL) in = fopen(str, "wb");	//ä»¥äºŒè¿›åˆ¶å†™å…¥æ¨¡å¼æ‰“å¼€æ–‡ä»¶
-	else in = fopen(str, "w");		//ä»¥æ–‡æœ¬å†™å…¥æ¨¡å¼æ‰“å¼€æ–‡ä»¶
+	if (bin != NULL) in = fopen(str, "wb");	//ÒÔ¶ş½øÖÆĞ´ÈëÄ£Ê½´ò¿ªÎÄ¼ş
+	else in = fopen(str, "w");		//ÒÔÎÄ±¾Ğ´ÈëÄ£Ê½´ò¿ªÎÄ¼ş
 
 	if (in == NULL) {
 		printf("No such file: %s\n", str);
@@ -65,14 +65,14 @@ void prinf_core(const char* str, vec_i& cores)	//é¦–å…ˆå­˜å‚¨é¡¶ç‚¹ä¸ªæ•°nï¼Œç„¶
 	}
 	else {
 		//printf("n=%d\n", n);
-		fprintf(in, "%d\n", n);		//ä»¥æ–‡æœ¬å½¢å¼å†™å…¥æ–‡ä»¶
+		fprintf(in, "%d\n", n);		//ÒÔÎÄ±¾ĞÎÊ½Ğ´ÈëÎÄ¼ş
 		for (int i = 0; i < n; ++i)
 			fprintf(in, "%d\n", cores[i]);
 	}
 	fclose(in);
 }
 
-//å¤§å›¾å­˜å‚¨åœ¨binæ–‡ä»¶ä¸­--è¯»å–é€Ÿåº¦æ›´å¿«ï¼›txtå¯è§†åŒ–æ›´å¼º
+//´óÍ¼´æ´¢ÔÚbinÎÄ¼şÖĞ--¶ÁÈ¡ËÙ¶È¸ü¿ì
 void printf_thres(const std::string& filePath, const std::vector<std::vector<double> >& thres) {
 	size_t txtPos = filePath.find(".txt");
 	size_t binPos = filePath.find(".bin");
@@ -83,8 +83,8 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 	int k = thres.size();
 	int n = thres[0].size();
 	FILE* in = NULL;
-	if (binPos != std::string::npos) in = fopen(filePath.c_str(), "wb");    //ä»¥äºŒè¿›åˆ¶å†™å…¥æ¨¡å¼æ‰“å¼€æ–‡ä»¶
-	else in = fopen(filePath.c_str(), "w");        //ä»¥æ–‡æœ¬å†™å…¥æ¨¡å¼æ‰“å¼€æ–‡ä»¶
+	if (binPos != std::string::npos) in = fopen(filePath.c_str(), "wb");    //ÒÔ¶ş½øÖÆĞ´ÈëÄ£Ê½´ò¿ªÎÄ¼ş
+	else in = fopen(filePath.c_str(), "w");        //ÒÔÎÄ±¾Ğ´ÈëÄ£Ê½´ò¿ªÎÄ¼ş
 
 	if (in == NULL) {
 		printf("No such file: %s\n", filePath.c_str());
@@ -101,7 +101,7 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 		}
 	}
 	else {
-		for (int i = 0; i < k; i++) {	//txtæ–‡ä»¶ - å¯è¯»æ€§æ›´å¼º
+		for (int i = 0; i < k; i++) {	//txtÎÄ¼ş - ¿É¶ÁĞÔ¸üÇ¿
 			fprintf(in, "%d :\n", i);
 			for (int j = 0; j < n; j++) {
 				fprintf(in, "%d :", j);
@@ -113,7 +113,7 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 }
 
 
-//ä½¿ç”¨binæ–‡ä»¶è¯»å–thres -- é€Ÿåº¦æ›´å¿«
+//Ê¹ÓÃbinÎÄ¼ş¶ÁÈ¡thres
 void load_thres(const std::string& filePath, std::vector<std::vector<double> >& thres) {
 	double tm = omp_get_wtime();
 	size_t binPos = filePath.find(".bin");
@@ -138,82 +138,76 @@ void load_thres(const std::string& filePath, std::vector<std::vector<double> >& 
 		}
 	}
 	tm = omp_get_wtime() - tm;
-	std::cout << "è¯»å–åˆå§‹thresæ–‡ä»¶---- timeï¼š" << tm << endl;
+	std::cout << "¶ÁÈ¡³õÊ¼thresÎÄ¼ş---- time£º" << tm << endl;
 }
 
 
 
-//æ’å…¥è¾¹çš„åˆå§‹æ›´æ–°ç®—æ³•
+//²åÈë±ßµÄ³õÊ¼¸üĞÂËã·¨
 vector<vector<double> > insertEdges(string infile, string parentPath, double scale) {
 	Uncertain_Core uc;
 
-	//ä»åŸæ•°æ®æ–‡ä»¶ éšæœºé€‰æ‹© åˆå§‹è¾¹ æ„å»ºåˆå§‹å›¾
-	uc.edge_selected_bin(infile, scale);	//0.7 - 1120 unselected
-	//uc.edge_selected_creat_bin(infile, 0.8, 340);	//è¯»å–binæ–‡ä»¶ï¼ŒåŠ å…¥340æ¡è¾¹ï¼Œå¹¶å­˜å‚¨åˆå§‹å›¾
+	//´ÓÔ­Êı¾İÎÄ¼ş Ëæ»úÑ¡Ôñ ³õÊ¼±ß ¹¹½¨³õÊ¼Í¼
+	uc.edge_selected_bin(infile, scale);	//scale - unselected
 
 	int n = uc.get_nm();
 	uc.get_core();
 	int kmax = uc.get_kmax();
 	cout << "kmax:" << kmax << endl;
 	vector<vector<double> > thres(kmax, vector<double>(n));
+	uc.Initial_threshold_compute_map(thres);
 
-	uc.Initial_threshold_compute(thres);
-	std::string thresInFile = parentPath + "/maintence datas/i-initial-DBLP.bin";
-	printf_thres(thresInFile, thres);
-
-	//è¯»å–thres	
+	//std::string thresInFile = parentPath + "/datas/decomposition/d-initial-Flickr.bin";	//¶ÁÈ¡·Ö½âÎÄ¼ş
 	//load_thres(thresInFile, thres);	
 
-	//ç¡®å®šå›¾æ’å…¥è¾¹
+	//È·¶¨Í¼²åÈë±ß
 	//uc.insert_core_compare();
-	//uc.insert_threshold_compare(thres);
+	uc.insert_threshold_compare(thres);
 	return thres;
 }
 
 
-//åˆ é™¤è¾¹çš„åˆå§‹æ›´æ–°ç®—æ³•
+//É¾³ı±ßµÄ³õÊ¼¸üĞÂËã·¨
 void deleteEdges(string readfile, string parentPath, double scale) {
 	Uncertain_Core uc;
 	uc.read_bin(readfile);
 	int n = uc.get_nm();
 	uc.get_core();
 	int kmax = uc.get_kmax();
-	vector<vector<double> > thres(kmax, vector<double>(n));	//åˆå§‹è®¡ç®— â€”â€” éœ€å­˜å‚¨ï¼Œthenè¯»å–å³å¯
+	vector<vector<double> > thres(kmax, vector<double>(n));	//³õÊ¼¼ÆËã ¡ª¡ª Ğè´æ´¢£¬then¶ÁÈ¡¼´¿É
 
-	//åˆå§‹è®¡ç®—thres	
-	//uc.Initial_threshold_compute(thres);
-	std::string thresInFile = parentPath + "/maintence datas/d-initial-try.bin";
+	//³õÊ¼¼ÆËãthres	
+	uc.Initial_threshold_compute_map(thres);
+	//std::string thresInFile = parentPath + "/maintence datas/d-initial-try.bin";
 	//printf_thres(thresInFile, thres);
 
-	//è¯»å–thres	
-	load_thres(thresInFile, thres);
+	//¶ÁÈ¡thres	
+	//load_thres(thresInFile, thres);
 
 	uc.delete_threshold_compare(thres, scale);
 	//uc.delete_compare_range(thres, scale);
 
-	std::string outfile = parentPath + "/maintence datas/d-read-try.txt";
-	printf_thres(outfile, thres);
+	/*std::string outfile = parentPath + "/maintence datas/d-read-try.txt";
+	printf_thres(outfile, thres);*/
 }
 
 
 int main()
 {
-	// è·å– main.cpp çš„è·¯å¾„ã€mainæ‰€åœ¨ç›®å½•ï¼Œæ•°æ®æ–‡ä»¶ç›¸å¯¹äºmain.cpp çš„ç›¸å¯¹è·¯å¾„ã€æ„å»ºæ•°æ®æ–‡ä»¶çš„ç»å¯¹è·¯å¾„
+	// »ñÈ¡ main.cpp µÄÂ·¾¶¡¢mainËùÔÚÄ¿Â¼£¬Êı¾İÎÄ¼şÏà¶ÔÓÚmain.cpp µÄÏà¶ÔÂ·¾¶¡¢¹¹½¨Êı¾İÎÄ¼şµÄ¾ø¶ÔÂ·¾¶
 	std::string currentPath = __FILE__;
 	std::string parentPath = getParentDirectory(currentPath);
-	std::string dataFilePath = "datas/orkut.bin";
+	std::string dataFilePath = "datas/Fruit-Fly.bin";	
 	std::string infile = parentPath + "/" + dataFilePath;
 
-	//insertEdges(infile, parentPath, 0.9995);
-	//deleteEdges(infile, parentPath, 0.8);
-
+	double scale = 0.8;		//Ñ¡ÔñËæ»ú±ß
+	insertEdges(infile, parentPath, scale);	
+	//deleteEdges(infile, parentPath, scale);
+	return 0;
+	
+	
 	Probability_Core pc;
-	/*string infile = "D:/doc/dataset/biomine.txt";
-	pc.creat_bin(infile);*/
-
-	/*vec_i core = pc.get_core();
-	const char* coreFile = "F:/ç”³åš/ZJU/uncertain graphs/uncertain graph/datas/core_num_core.txt";
-	prinf_core(coreFile, core);*/
+	//pc.creat_bin(infile);	//´´½¨binÎÄ¼ş
 
 	pc.read_bin(infile);
 	int n = pc.get_nm();
@@ -221,17 +215,20 @@ int main()
 	double tm = omp_get_wtime();
 	pc.get_core();
 	int kmax = pc.get_kmax();
-	vector<vector<double> > thres(kmax, vector<double>(n));	//åˆå§‹è®¡ç®— â€”â€” éœ€å­˜å‚¨ï¼Œthenè¯»å–å³å¯
-	pc.Initial_threshold_compute(thres);
-	//pc.Initial_threshold_comp_by_division(thres);
+	vector<vector<double> > thres(kmax, vector<double>(n));	//³õÊ¼¼ÆËã ¡ª¡ª Ğè´æ´¢£¬then¶ÁÈ¡¼´¿É
+	pc.Initial_threshold_compute_map(thres);
 	tm = omp_get_wtime() - tm;
 	std::cout << "Time:" << tm << endl;
-	
-	//pc.increase_threshold_compare(thres, 0.8, 100);	//è¾¹ç¼˜æ¦‚ç‡å¢åŠ 
-	//pc.decrease_threshold_compare(thres, 0.8, 100);	//è¾¹ç¼˜æ¦‚ç‡å‡å°
 
-	std::string outfile = parentPath + "/maintence datas/d-initial-orkut.bin";
-	printf_thres(outfile, thres);
+
+	//pc.increase_threshold_compare(thres, 0.8, 1000);	//±ßÔµ¸ÅÂÊÔö¼Ó
+	//pc.decrease_threshold_compare(thres, 0.8, 1000);	//±ßÔµ¸ÅÂÊ¼õĞ¡
+
+
+	//save decomposition result
+	/*std::string outfile = parentPath + "/datas/d-Flickr.txt";
+	printf_thres(outfile, thres);*/
+
 
 	system("pause");
 	return 0;

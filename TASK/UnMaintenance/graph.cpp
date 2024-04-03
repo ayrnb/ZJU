@@ -101,7 +101,7 @@ void Graph::read_bin(const string& infile)
 		/*if (i > 1)
 		break;*/
 	}
-		
+
 }
 
 void Graph::read_bin(const string& infile, int voe, float scale)	//scale表示缩放因子
@@ -327,7 +327,7 @@ vector<int> Graph::edge_selected_bin(const string& infile, float scale) {
 				}
 				else
 				{
-					cout << "unselected-vertex:" << i << " nei:" << u << endl;
+					//cout << "unselected-vertex:" << i << " nei:" << u << endl;
 					std::pair<int, int> p1 = std::make_pair(i, u);
 					double p = adj[i][j].p;
 					unselected.push_back(make_pair(p1, p));
@@ -340,7 +340,7 @@ vector<int> Graph::edge_selected_bin(const string& infile, float scale) {
 	delete[] degn;
 
 	cout << "unselected edges:" << unselected.size() << endl;
-	cout << "random edges count:" << cnts / 2 << endl;	
+	cout << "random edges count:" << cnts / 2 << endl;
 	printf("Reading time: %lf s\n", omp_get_wtime() - tm);
 	//return;
 
@@ -425,13 +425,13 @@ void Graph::creat_bin(const string& infile)
 	Int* edges = new Int[m]; memset(edges, 0, sizeof(Int) * m);
 	//Int *degn = new Int[n]; memset(degn, 0, sizeof(Int) * n);
 	double* probability = new double[m]; memset(probability, 0, sizeof(double) * m);
-	for (size_t i = 0; i < datas.size(); ++i) {		
+	for (size_t i = 0; i < datas.size(); ++i) {
 		x = datas[i].first.first;
 		y = datas[i].first.second;
 		p = datas[i].second;
 
-		deg[x]++;  
-		edges[i] = y; 
+		deg[x]++;
+		edges[i] = y;
 		probability[i] = p;
 		//degn[y]++;
 	}
@@ -461,64 +461,3 @@ void Graph::creat_bin(const string& infile)
 	exit(1);
 }
 
-
-//随机选择scale条边 并保存num条未选中的边到bin文件，读取bin文件并逐条插入错误边
-void Graph::edge_selected_creat_bin(const string& infile, float scale, int num) {
-	vector<int> dd = edge_selected_bin(infile, scale);
-
-	//依次插入num条边
-	for (int i = 0; i < num; i++) {
-		int u = unselected[i].first.first;
-		int v = unselected[i].first.second;
-		cout << "插入边数：" << i << " u:" << u << " v:" << v << endl;
-
-		//维护图结构
-		int pos = deg[u];
-		adj[u][pos].u = v;
-		adj[u][pos].p = unselected[i].second;
-		adj[u][pos].re = deg[v];
-
-		pos = deg[v];
-		adj[v][pos].u = u;
-		adj[v][pos].p = unselected[i].second;
-		adj[v][pos].re = deg[u];
-		deg[u]++;
-		deg[v]++;
-	}
-
-
-	//将上图存储为bin文件
-	string outfile;
-	size_t pos = infile.find(".");		//找到输入文件名中的第一个(.)，将之间的部分作为文件名
-	if (pos > 0)
-		outfile = infile.substr(0, pos);
-	outfile += "_scale.bin";
-	printf("outfile = %s\nSaving to bin...\n", outfile.c_str());
-	Int* edges = new Int[m]; memset(edges, 0, sizeof(Int) * m);
-	double* probability = new double[m]; memset(probability, 0, sizeof(double) * m);
-	int count = 0;
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < deg[i]; j++) {		//添加了num条边后的初始图
-			edges[count] = adj[i][j].u;
-			probability[count] = adj[i][j].p;
-			count++;
-		}
-	}
-	cout << "存储边数：" << count << endl;
-
-	FILE* out = fopen(outfile.c_str(), "wb");
-	fwrite(&n, sizeof(Int), 1, out);
-	fwrite(&m, sizeof(Long), 1, out);
-	fwrite(deg, sizeof(Int), n, out);
-	fwrite(edges, sizeof(Int), m, out);
-	fwrite(probability, sizeof(double), m, out);
-	fclose(out);
-	printf("Saving done\n");
-
-	/*for (size_t i = 0; i < m; ++i) {
-	x = datas[i].first.first;
-	y = datas[i].first.second;
-	p = datas[i].second;
-	printf("%d %d %lf\n",x, y, p);
-	}*/
-}

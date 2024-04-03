@@ -52,8 +52,6 @@ public:
 
 	void creat_bin(const string& infile);
 
-	void edge_selected_creat_bin(const string& infile, float scale, int num);
-
 	Int get_nm() { return n; }
 	Long get_em() { return m; }
 	Int get_uem() { return unselected.size(); }
@@ -62,4 +60,4 @@ public:
 	Pairs** get_adj() { return adj; }
 };
 
-#endif // !GRAPH_H
+#endif // !GRAPH_H#pragma once

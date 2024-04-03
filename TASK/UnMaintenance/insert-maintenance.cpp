@@ -33,7 +33,7 @@ void Uncertain_Core::insert_threshold_singlepoint_compute(vector<double>& kthres
         }
         double kprob2 = kprob_comp_scale(v, visited_2, k + 1);
 
-        if ((kprob2 - kprob1) > EPSILON) {  //省略一次kprob的初始计算，upper和root必须相对应
+        if ((kprob2 - kprob1) > EPSILON) {  //省略一次kprob的初始计算
             root = u;
             upper = kprob1;
         }
@@ -80,8 +80,9 @@ void Uncertain_Core::insert_threshold_singlepoint_compute(vector<double>& kthres
 
 
 //inset寻找候选集
-int Uncertain_Core::insert_search_candi(vector<double>& kthres, double low, double upper, int root, int k, vec_b& visited, vec_i& candiNode, vec_d& candiProb, vec_i& candiRIndex, vec_i& neiNum) {
+int Uncertain_Core::insert_search_candi(vector<double>& kthres, double low, double upper, int root, int k, vec_b& visited, vec_i& candiRIndex, vec_i& neiNum, std::set<Node*, NodePtrComparator>& mySet, std::map<int, Node*>& hashTable) {
     int count = 0;
+    double kprob;
     std::fill(candiRIndex.begin(), candiRIndex.end(), -1);
     std::fill(neiNum.begin(), neiNum.end(), 0);
     std::fill(visited.begin(), visited.end(), false);
@@ -93,23 +94,26 @@ int Uncertain_Core::insert_search_candi(vector<double>& kthres, double low, doub
     }
 
     std::queue<int> que;    //候选处理que
-    vec_b visitedCandi(n, false);    //visited包含可能变大的数组
+    vec_b visitedCandi(n, false);
     que.push(root);
     visitedCandi[root] = true;
     while (!que.empty()) {
         int node = que.front();
         que.pop();
 
-        candiNode[count] = node;    //候选节点
-        candiRIndex[node] = count;
         if (node == root) {
-            candiProb[count] = upper;
+            kprob = upper;
         }
         else
         {
-            candiProb[count] = kprob_comp(node, visited, k + 1);
+            kprob = kprob_comp(node, visited, k + 1);
             //cout << "node:" << node << " kprob:" << candiProb[count] << endl;
         }
+        Node* initialNode = new Node(node, kprob);
+        mySet.insert(initialNode);
+        hashTable[node] = initialNode;
+        candiRIndex[node] = count;
+
         int d = deg[node];
         for (int i = 0; i < d; i++) {
             int w = adj[node][i].u;
@@ -123,52 +127,69 @@ int Uncertain_Core::insert_search_candi(vector<double>& kthres, double low, doub
             }
         }
         count++;
-    }    
+    }
     return count;
 }
 
 
 //更新候选集的thres
-void Uncertain_Core::insert_update_candidate_thres(vector<double>& kthres, int& k, int& count, vec_i& candiNode, vec_d& candiProb, vec_b& visited, vec_i& candiRIndex, vec_i& neiNum) {
+void Uncertain_Core::insert_update_candidate_thres(vector<double>& kthres, int& k, int& count,vec_b& visited, vec_i& candiRIndex, vec_i& neiNum, std::set<Node*, NodePtrComparator>& mySet, std::map<int, Node*>& hashTable) {
     int index;
     double curThres = 0.0;
     int flag = count;
+    double kprob;
     while (flag) {
-        int minIndex = 0;
-        int minV = candiNode[0];
-        double p = candiProb[0];
-        for (int i = 1; i < count; i++) {
-            if (p > candiProb[i]) {
-                minIndex = i;
-                p = candiProb[i];
-                minV = candiNode[i];
-            }
-        }        
-        curThres = max(curThres, p);  
-        //cout << "v:" << minV << " curThres:" << curThres << endl;
-        //cout << "原先v的thres：" << kthres[minV] << endl;
-        kthres[minV] = curThres;
-        visited[minV] = false;
-        candiProb[minIndex] = 2;   //概率值不会大于2
+        auto it = mySet.begin();
+        Node* minValueNode = *(it);
+        int minV = minValueNode->id;
+        double p = minValueNode->value;
+
+        curThres = max(curThres, p);
+        if (curThres > 0) {
+            kthres[minV] = curThres;
+        }
         flag--;
+        visited[minV] = false;
+        candiRIndex[minV] = -1;
+        mySet.erase(it);
+        hashTable.erase(minV);
+        delete minValueNode;       
+
         //更新其邻居
         for (int t = 0; t < deg[minV]; t++) {
             int w = adj[minV][t].u;
             index = candiRIndex[w];
+
             //w在candiSet中才需要更新
-            if (index != -1 && candiProb[index] != 2) {
+            if (index != -1) {           
+                Node* neiNode = hashTable[w];
+                it = mySet.find(neiNode);
+                mySet.erase(it);
                 neiNum[w]--;
-                if (neiNum[w] < k + 1) {
-                    candiProb[index] = 0;
+                if (neiNum[w] < k) {
+                    neiNode->value = 0.0;
                 }
                 else
                 {
-                    candiProb[index] = kprob_comp(w, visited, k + 1);
-                }
+                    kprob = kprob_comp(w, visited, k + 1);
+                    neiNode->value = kprob;
+                }                
+                mySet.insert(neiNode);
+                hashTable[w] = neiNode;
                 //cout << "nei:" << w << " kprob:" << candiProb[index] << endl;
             }
         }
     }
+
+    for (auto node : mySet) {
+        delete node;
+    }
+    mySet.clear();
+
+    for (auto pair : hashTable) {
+        delete pair.second;
+    }
+    hashTable.clear();
 }
 
 
@@ -226,7 +247,7 @@ int Uncertain_Core::insert_find_core_subcore(int root, int k, vec_b& color, vec_
                     cd[w]--;
                 }
             }
-        }               
+        }
     }
 
     //确认候选顶点是否被color
@@ -246,7 +267,7 @@ int Uncertain_Core::insert_find_core_subcore(int root, int k, vec_b& color, vec_
                     }
                 }
                 break;  //一旦修改count，则进入下一个while循环
-            }            
+            }
         }
         if (recordCount == count) {
             flag = 0;
@@ -256,7 +277,7 @@ int Uncertain_Core::insert_find_core_subcore(int root, int k, vec_b& color, vec_
     //更新core
     if (count) {
         for (int i = 0; i < countNum; i++) {
-            int v = candiNode[i];            
+            int v = candiNode[i];
             if (color[v]) {
                 core[v]++;
                 //cout << "v:" << v << " core:" << core[v] << endl;
@@ -268,15 +289,15 @@ int Uncertain_Core::insert_find_core_subcore(int root, int k, vec_b& color, vec_
 
 
 //当k = mincore + 1，inset寻找候选集，low必然为0 -- core已维护（visited=true改变）
-int Uncertain_Core::insert_search_candi_core_change(vector<double>& kthres, int u, int v, int k, vec_b& visited, vec_i& candiNode, vec_d& candiProb, vec_i& candiRIndex, vec_i& neiNum) {
+int Uncertain_Core::insert_search_candi_core_change(vector<double>& kthres, int u, int v, int k, vec_b& visited, vec_i& candiRIndex, vec_i& neiNum, std::set<Node*, NodePtrComparator>& mySet, std::map<int, Node*>& hashTable) {
     int count = 0;
     int root;
-    double upper;
+    double upper, kprob;
     std::fill(candiRIndex.begin(), candiRIndex.end(), -1);
     std::fill(neiNum.begin(), neiNum.end(), 0);
     //初始化需要访问的节点 -- thres>=low || core变化的顶点(初始thres=0)
     for (int i = 0; i < n; i++) {
-        if (kthres[i] > 0) {
+        if (core[i] > 0) {
             visited[i] = true;
         }
     }
@@ -315,15 +336,18 @@ int Uncertain_Core::insert_search_candi_core_change(vector<double>& kthres, int 
         int node = que.front();
         que.pop();
 
-        candiNode[count] = node;    //候选节点
-        candiRIndex[node] = count;
         if (node == root) {
-            candiProb[count] = upper;
+            kprob = upper;
         }
         else
         {
-            candiProb[count] = kprob_comp(node, visited, k + 1);
+            kprob = kprob_comp(node, visited, k + 1);
         }
+        Node* initialNode = new Node(node, kprob);
+        mySet.insert(initialNode);
+        hashTable[node] = initialNode;
+        candiRIndex[node] = 1;
+
         int d = deg[node];
         for (int i = 0; i < d; i++) {
             int w = adj[node][i].u;
@@ -345,21 +369,21 @@ int Uncertain_Core::insert_search_candi_core_change(vector<double>& kthres, int 
 vector<vector<double> > Uncertain_Core::insert_threshold_compute_candidate(vector<vector<double> >& thres, int u, int v, double& time, int& ct) {
     double tm = omp_get_wtime();
 
-    std::cout << "根据原始图计算上下界--------" << endl;
     int kk = min(core[u], core[v]);
     vector<vector<double> > range(2, vector<double>(kk));
-    std::cout << "kk:" << kk << endl;
-    double low, up;
+    //std::cout << "kk:" << kk << endl;
+    double low, up, kprob;
     int root;
 
     int count;
     ct = 0;
     int countNum;
-    vec_i candiNode(n);
-    vec_d candiProb(n);     //大小为count，降低比较复杂度
     vec_i candiReverseIndex(n); //为candi index与node index建立关联
     vec_i node_visited_num(n);  //每个候选节点的度数 -- 大小为n
     vec_b node_visited(n);      //用n映射该节点是否要访问
+    std::set<Node*, NodePtrComparator> mySet;
+    std::map<int, Node*> hashTable;
+    vec_i candiNode(n);
 
     for (int k = 0; k < kk; k++) {
         //std::cout << "k:" << k << endl;  
@@ -367,19 +391,16 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_candidate(vecto
         insert_threshold_singlepoint_compute(thres[k], low, up, root, u, v, k);
         range[0][k] = low;
         range[1][k] = up;
-        //是否需要判断low、up的大小
-        /*if ((low - up) >= -EPSILON) {
-            continue;
-        }*/
+
 
         //寻找候选集 -- node_visited表示包含候选点的初始子图，对于kk，寻找时判断deg是否满足要求
-        count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
-        ct += count;
+        count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
+        ct += mySet.size();
         //cout << "count:" << count << endl;
 
         if (count != 0) {
-            insert_update_candidate_thres(thres[k], k, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
-        }        
+            insert_update_candidate_thres(thres[k], k, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
+        }
     }
 
 
@@ -399,19 +420,21 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_candidate(vecto
     //存在节点coreness变化
     if (kk == kmax) {  //总体core增大 -- 初始图为core增大的顶点
         kmax++;
+        cout << "kmax++; " << kmax << endl;
         ct += count;
         vector<double> newRow(n, 0.0);
         thres.push_back(newRow);
 
-        std::fill(candiProb.begin(), candiProb.end(), 2);
         std::fill(node_visited_num.begin(), node_visited_num.end(), 0);
 
         //初始化kprob
         for (int i = 0; i < countNum; i++) {
             int node = candiNode[i];
             if (node_visited[node]) {
-                candiProb[i] = kprob_comp(node, node_visited, kk + 1);
-                //cout << "node:" << node << " kprob:" << candiProb[i] << endl;
+                kprob = kprob_comp(node, node_visited, kk + 1);
+                Node* initialNode = new Node(node, kprob);
+                mySet.insert(initialNode);
+                hashTable[node] = initialNode;
 
                 int d = deg[node];
                 for (int j = 0; j < d; j++) {
@@ -424,54 +447,68 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_candidate(vecto
         }
 
         //只计算core改变的点
-        int index;
         double curThres = 0.0;
         while (count) {
-            int minIndex = 0;
-            int minV = candiNode[0];
-            double p = candiProb[0];
-            for (int i = 1; i < countNum; i++) {
-                if (p > candiProb[i]) {
-                    p = candiProb[i];
-                    minV = candiNode[i];
-                    minIndex = i;
-                }
-            }
+            auto it = mySet.begin();
+            Node* minValueNode = *(it);
+            int minV = minValueNode->id;
+            double p = minValueNode->value;
+
             curThres = max(curThres, p);
             thres[kk][minV] = curThres;
+            mySet.erase(it);
+            hashTable.erase(minV);
+            delete minValueNode;
             //cout << "minV:" << minV << " thres:" << curThres << endl;
 
             node_visited[minV] = false;
-            candiProb[minIndex] = 2;
             count--;
             //更新其邻居
             for (int t = 0; t < deg[minV]; t++) {
-                int w = adj[minV][t].u;                
+                int w = adj[minV][t].u;
                 if (node_visited[w]) {
+                    Node* neiNode = hashTable[w];
+                    it = mySet.find(neiNode);
+                    mySet.erase(it);
                     node_visited_num[w]--;
-                    index = candiReverseIndex[w];
+
                     if (node_visited_num[w] < kk + 1) {
-                        candiProb[index] = 0;
+                        kprob = 0;
                     }
                     else
                     {
-                        candiProb[index] = kprob_comp(w, node_visited, kk + 1);
+                        kprob = kprob_comp(w, node_visited, kk + 1);
                     }
+                    neiNode->value = kprob;
+                    mySet.insert(neiNode);
+                    hashTable[w] = neiNode;
                 }
             }
         }
+
+        // 释放剩余节点的内存
+        for (auto node : mySet) {
+            delete node;
+        }
+        mySet.clear();
+
+        // 清空哈希表
+        for (auto pair : hashTable) {
+            delete pair.second;
+        }
+        hashTable.clear();
     }
     else
     {
         //可以直接访问thres，low=0，计算up（必然不为0）
-        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
+        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
-        cout << "kmin+1 - count:" << count << endl;
+        //cout << "kmin+1 - count:" << count << endl;
 
         //更新候选集thres
         if (count != 0) {
-            insert_update_candidate_thres(thres[kk], kk, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
-        }        
+            insert_update_candidate_thres(thres[kk], kk, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
+        }
     }
 
     time = omp_get_wtime() - tm;
@@ -479,24 +516,17 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_candidate(vecto
 }
 
 
+//insert + decomposition
 void Uncertain_Core::insert_threshold_recompute(vector<vector<double> >& thres, double& time) {
     double tm = omp_get_wtime();
     get_core();
     //cout << "kmax:" << kmax << endl;
     thres.resize(kmax, vector<double>(n));
-    Initial_threshold_compute(thres);
+    //Initial_threshold_compute(thres);
+    Initial_threshold_compute_map(thres);
     time = omp_get_wtime() - tm;
 }
 
-
-void Uncertain_Core::insert_thres_recompute_division(vector<vector<double> >& thres, double& time) {
-    double tm = omp_get_wtime();
-    get_core();
-    //cout << "kmax:" << kmax << endl;
-    thres.resize(kmax, vector<double>(n));
-    Initial_threshold_comp_by_division(thres);
-    time = omp_get_wtime() - tm;
-}
 
 
 //初始图计算的thres，维护图结构+寻找候选集计算+直接重算
@@ -506,14 +536,14 @@ void Uncertain_Core::insert_threshold_compare(vector<vector<double> >& thres) {
     double tm_1;
     double tm_2;
     int candi_count;
-    long long int candi_sum = 0;    
+    long long int candi_sum = 0;
 
     int um = unselected.size();
     cout << "um:" << um << endl;
-    for (int i = 0; i < um; i++) {   
+    for (int i = 670; i < um; i++) {
         int u = unselected[i].first.first;
         int v = unselected[i].first.second;
-        cout << "插入边数：" << i << ":  u:" << u << " v:" << v << endl;
+        cout << "insert edge: " << i << ":  u:" << u << " v:" << v << endl;
 
         //维护图结构
         int pos = deg[u];
@@ -530,28 +560,28 @@ void Uncertain_Core::insert_threshold_compare(vector<vector<double> >& thres) {
 
         //vector<vector<double> > compareThres = thres;
         int mincore = min(core[u], core[v]);
-        vector<vector<double> > range = insert_threshold_compute_candidate(thres, u, v, tm_1, candi_count);
-        //vector<vector<double> > range = insert_threshold_compute_update_range(thres, u, v, tm_1, candi_count);
-        //vector<vector<double> > range = insert_threshold_compute_restriction_point(thres, u, v, tm_1, candi_count);
-        //vector<vector<double> > range = insert_threshold_compute_batchUP(thres, u, v, tm_1, candi_count);
-        //vector<vector<double> > range = insert_threshold_compute_opt(thres, u, v, tm_1, candi_count);
+        //vector<vector<double> > range = insert_threshold_compute_candidate(thres, u, v, tm_1, candi_count);     //InsertBase
+        //vector<vector<double> > range = insert_threshold_compute_update_range(thres, u, v, tm_1, candi_count);    //-CT
+        //vector<vector<double> > range = insert_threshold_compute_restriction_point(thres, u, v, tm_1, candi_count);   //-UPD
+        //vector<vector<double> > range = insert_threshold_compute_batchUP(thres, u, v, tm_1, candi_count);     //-BAT
+        vector<vector<double> > range = insert_threshold_compute_opt(thres, u, v, tm_1, candi_count);     //-OPT
         candidate_tm += tm_1;
         candi_sum += candi_count;
         //cout << "insert_compute_candidate:" << tm_1 << endl;
 
 
         delete[] core;	//将之前的core动态释放   
-		vector<vector<double> > thres_2;     
+        vector<vector<double> > thres_2;
         insert_threshold_recompute(thres_2, tm_2);
         recompute_tm += tm_2;
         //cout << "insert_threshold_recompute:" << tm_2 << endl;
 
         //比较插入边后的变化阈值
-        /*bool compare = compareArraysTrueOrFalse(thres, thres_2);
+        bool compare = compareArraysTrueOrFalse(thres, thres_2);
         if (!compare) {
             cout << "数组是否相同----------------------------------------------：" << compare << endl;
             compareKsizeArraysTrueOrFalse(thres, thres_2, mincore);
-        } */           
+        } 
         //compareArrays(compareThres, thres_2, range[0], range[1], mincore);
 
         //将newArray复制给thres
@@ -573,40 +603,42 @@ void Uncertain_Core::insert_threshold_compare(vector<vector<double> >& thres) {
 }
 
 
+
 //insert优化方案：0）初始方案；1）动态更新range；2）寻找限制点；3）批量确定候选点的thres；4）优化方案的结合
 vector<vector<double> > Uncertain_Core::insert_threshold_compute_update_range(vector<vector<double> >& thres, int u, int v, double& time, int& ct) {
     double tm = omp_get_wtime();
 
-    std::cout << "根据原始图计算上下界--------" << endl;
     int kk = min(core[u], core[v]);
     vector<vector<double> > range(2, vector<double>(kk));
-    std::cout << "kk:" << kk << endl;
-    double low, up;
+    //std::cout << "kk:" << kk << endl;
+    double low, up, kprob;
     int root;
 
     int count;
     ct = 0;
     int countNum;
-    vec_i candiNode(n);
-    vec_d candiProb(n);     //大小为count，降低比较复杂度
     vec_i candiReverseIndex(n); //为candi index与node index建立关联
     vec_i node_visited_num(n);  //每个候选节点的度数 -- 大小为n
     vec_b node_visited(n);      //用n映射该节点是否要访问
+    std::set<Node*, NodePtrComparator> mySet;
+    std::map<int, Node*> hashTable;
+    vec_i candiNode(n);
 
     for (int k = 0; k < kk; k++) {
-        //std::cout << "k:" << k << endl;
+        //std::cout << "k:" << k << endl;  
         //计算影响上下界，并求得root
         insert_threshold_singlepoint_compute(thres[k], low, up, root, u, v, k);
         range[0][k] = low;
         range[1][k] = up;
 
+
         //寻找候选集 -- node_visited表示包含候选点的初始子图，对于kk，寻找时判断deg是否满足要求
-        count = i_candi_dynamic_update_range(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
+        count = i_candi_dynamic_update_range(thres[k], low, up, root, k, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
         //cout << "count:" << count << endl;
 
         if (count != 0) {
-            insert_update_candidate_thres(thres[k], k, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            insert_update_candidate_thres(thres[k], k, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -627,19 +659,21 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_update_range(ve
     //存在节点coreness变化
     if (kk == kmax) {  //总体core增大 -- 初始图为core增大的顶点
         kmax++;
+        cout << "kmax++; " << kmax << endl;
         ct += count;
         vector<double> newRow(n, 0.0);
         thres.push_back(newRow);
 
-        std::fill(candiProb.begin(), candiProb.end(), 2);
         std::fill(node_visited_num.begin(), node_visited_num.end(), 0);
 
         //初始化kprob
         for (int i = 0; i < countNum; i++) {
             int node = candiNode[i];
             if (node_visited[node]) {
-                candiProb[i] = kprob_comp(node, node_visited, kk + 1);
-                //cout << "node:" << node << " kprob:" << candiProb[i] << endl;
+                kprob = kprob_comp(node, node_visited, kk + 1);
+                Node* initialNode = new Node(node, kprob);
+                mySet.insert(initialNode);
+                hashTable[node] = initialNode;
 
                 int d = deg[node];
                 for (int j = 0; j < d; j++) {
@@ -652,53 +686,67 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_update_range(ve
         }
 
         //只计算core改变的点
-        int index;
         double curThres = 0.0;
         while (count) {
-            int minIndex = 0;
-            int minV = candiNode[0];
-            double p = candiProb[0];
-            for (int i = 1; i < countNum; i++) {
-                if (p > candiProb[i]) {
-                    p = candiProb[i];
-                    minV = candiNode[i];
-                    minIndex = i;
-                }
-            }
+            auto it = mySet.begin();
+            Node* minValueNode = *(it);
+            int minV = minValueNode->id;
+            double p = minValueNode->value;
+
             curThres = max(curThres, p);
             thres[kk][minV] = curThres;
+            mySet.erase(it);
+            hashTable.erase(minV);
+            delete minValueNode;
             //cout << "minV:" << minV << " thres:" << curThres << endl;
 
             node_visited[minV] = false;
-            candiProb[minIndex] = 2;
             count--;
             //更新其邻居
             for (int t = 0; t < deg[minV]; t++) {
                 int w = adj[minV][t].u;
                 if (node_visited[w]) {
+                    Node* neiNode = hashTable[w];
+                    it = mySet.find(neiNode);
+                    mySet.erase(it);
                     node_visited_num[w]--;
-                    index = candiReverseIndex[w];
+
                     if (node_visited_num[w] < kk + 1) {
-                        candiProb[index] = 0;
+                        kprob = 0;
                     }
                     else
                     {
-                        candiProb[index] = kprob_comp(w, node_visited, kk + 1);
+                        kprob = kprob_comp(w, node_visited, kk + 1);
                     }
+                    neiNode->value = kprob;
+                    mySet.insert(neiNode);
+                    hashTable[w] = neiNode;
                 }
             }
         }
+
+        // 释放剩余节点的内存
+        for (auto node : mySet) {
+            delete node;
+        }
+        mySet.clear();
+
+        // 清空哈希表
+        for (auto pair : hashTable) {
+            delete pair.second;
+        }
+        hashTable.clear();
     }
     else
     {
         //可以直接访问thres，low=0，计算up（必然不为0）
-        count = i_candi_core_change_update_range(thres[kk], u, v, kk, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
+        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
-        cout << "kmin+1 - count:" << count << endl;
+        //cout << "kmin+1 - count:" << count << endl;
 
         //更新候选集thres
         if (count != 0) {
-            insert_update_candidate_thres(thres[kk], kk, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            insert_update_candidate_thres(thres[kk], kk, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -708,8 +756,10 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_update_range(ve
 
 
 //动态更新range -- visited = true表示候选子图； 不能一边寻找候选集 一边计算kprob
-int Uncertain_Core::i_candi_dynamic_update_range(vector<double>& kthres, double low, double upper, int root, int k, vec_b& visited, vec_i& candiNode, vec_d& candiProb, vec_i& candiRIndex, vec_i& neiNum) {
+int Uncertain_Core::i_candi_dynamic_update_range(vector<double>& kthres, double low, double upper, int root, int k, vec_b& visited, vec_i& candiRIndex, vec_i& neiNum, std::set<Node*, NodePtrComparator>& mySet, std::map<int, Node*>& hashTable) {
     int count = 0;
+    double kprob;
+    vec_i candiNode(n);
     std::fill(candiRIndex.begin(), candiRIndex.end(), -1);
     std::fill(neiNum.begin(), neiNum.end(), 0);
     std::fill(visited.begin(), visited.end(), false);
@@ -750,150 +800,15 @@ int Uncertain_Core::i_candi_dynamic_update_range(vector<double>& kthres, double 
     for (int i = 0; i < count; i++) {
         int node = candiNode[i];
         if (node == root) {
-            candiProb[i] = upper;
+            kprob = upper;
         }
         else
         {
-            candiProb[i] = kprob_comp(node, visited, k + 1);
+            kprob = kprob_comp(node, visited, k + 1);
         }
-
-        int d = deg[node];
-        for (int t = 0; t < d; t++) {
-            int w = adj[node][t].u;
-            if (visited[w]) {
-                neiNum[node]++;
-            }
-        }        
-    }
-    return count;
-}
-
-
-int Uncertain_Core::i_candi_core_change_update_range(vector<double>& kthres, int u, int v, int k, vec_b& visited, vec_i& candiNode, vec_d& candiProb, vec_i& candiRIndex, vec_i& neiNum) {
-    int count = 0;
-    int root;
-    double upper;
-    std::fill(candiRIndex.begin(), candiRIndex.end(), -1);
-    std::fill(neiNum.begin(), neiNum.end(), 0);
-
-    //确定root、upper，其中low必然为0
-    if (std::fabs(kthres[u] - kthres[v]) < EPSILON) {
-        int d1 = deg[u];
-        vec_b visitedNei(d1, false);
-        for (int t = 0; t < d1; t++) {
-            int w = adj[u][t].u;
-            double th = kthres[w];
-            if (visited[w] || th > 0) {
-                visitedNei[t] = true;
-            }
-        }
-        double kprob1 = kprob_comp_scale(u, visitedNei, k + 1);
-
-        int d2 = deg[v];
-        vec_b visitedNei_2(d2, false);
-        for (int t = 0; t < d2; t++) {
-            int w = adj[v][t].u;
-            double th = kthres[w];
-            if (visited[w] || th > 0) {
-                visitedNei_2[t] = true;
-            }
-        }
-        double kprob2 = kprob_comp_scale(v, visitedNei_2, k + 1);
-
-        if ((kprob2 - kprob1) > EPSILON) {
-            root = u;
-            upper = kprob1;
-        }
-        else
-        {
-            root = v;
-            upper = kprob2;
-        }
-    }
-    else if (kthres[u] < kthres[v]) {
-        root = u;
-        int d1 = deg[u];
-        vec_b visitedNei(d1, false);
-        for (int t = 0; t < d1; t++) {
-            int w = adj[u][t].u;
-            double th = kthres[w];
-            if (visited[w] || th > 0) {
-                visitedNei[t] = true;
-            }
-        }
-        upper = kprob_comp_scale(u, visitedNei, k + 1);
-    }
-    else
-    {
-        root = v;
-        int d1 = deg[v];
-        vec_b visitedNei(d1, false);
-        for (int t = 0; t < d1; t++) {
-            int w = adj[v][t].u;
-            double th = kthres[w];
-            if (visited[w] || th > 0) {
-                visitedNei[t] = true;
-            }
-        }
-        upper = kprob_comp_scale(v, visitedNei, k + 1);
-    }
-
-    //初始化大于upper的顶点
-    for (int i = 0; i < n; i++) {
-        if ((kthres[i] - upper) >= -EPSILON) {
-            visited[i] = true;
-        }
-    }
-
-    //寻找候选集
-    std::queue<int> que;    //候选处理que
-    vec_b visitedCandi(n, false);    //visited包含可能变大的数组
-    que.push(root);
-    visitedCandi[root] = true;
-    while (!que.empty()) {
-        int node = que.front();
-        que.pop();
-
-        candiNode[count] = node;    //候选节点
-        candiRIndex[node] = count;
-        visited[node] = true;
-        int d = deg[node];
-        for (int i = 0; i < d; i++) {
-            int w = adj[node][i].u;
-            if (kthres[w] > 0) {
-                if ((kthres[w] - kthres[node]) >= -EPSILON) {
-                    //neiNum[node]++;
-                    if (!visitedCandi[w] && ((upper - kthres[w]) > EPSILON)) {
-                        que.push(w);
-                        visitedCandi[w] = true;
-                    }
-                }
-            }
-            else
-            {
-                if (visited[w]) {
-                    //neiNum[node]++;
-                    if (!visitedCandi[w] && ((upper - kthres[w]) > EPSILON)) {
-                        que.push(w);
-                        visitedCandi[w] = true;
-                    }
-                }
-            }
-            
-        }
-        count++;
-    }
-
-    //初始化candi各顶点的kprob
-    for (int i = 0; i < count; i++) {
-        int node = candiNode[i];
-        if (node == root) {
-            candiProb[i] = upper;
-        }
-        else
-        {
-            candiProb[i] = kprob_comp(node, visited, k + 1);
-        }
+        Node* initialNode = new Node(node, kprob);
+        mySet.insert(initialNode);
+        hashTable[node] = initialNode;
 
         int d = deg[node];
         for (int t = 0; t < d; t++) {
@@ -903,30 +818,30 @@ int Uncertain_Core::i_candi_core_change_update_range(vector<double>& kthres, int
             }
         }
     }
-
     return count;
 }
+
 
 
 //寻找限制点
 vector<vector<double> > Uncertain_Core::insert_threshold_compute_restriction_point(vector<vector<double> >& thres, int u, int v, double& time, int& ct) {
     double tm = omp_get_wtime();
 
-    std::cout << "根据原始图计算上下界--------" << endl;
     int kk = min(core[u], core[v]);
     vector<vector<double> > range(2, vector<double>(kk));
-    std::cout << "kk:" << kk << endl;
-    double low, up;
+    //std::cout << "kk:" << kk << endl;
+    double low, up, kprob;
     int root;
 
     int count;
     ct = 0;
     int countNum;
-    vec_i candiNode(n);
-    vec_d candiProb(n);     //大小为count，降低比较复杂度
     vec_i candiReverseIndex(n); //为candi index与node index建立关联
     vec_i node_visited_num(n);  //每个候选节点的度数 -- 大小为n
     vec_b node_visited(n);      //用n映射该节点是否要访问
+    std::set<Node*, NodePtrComparator> mySet;
+    std::map<int, Node*> hashTable;
+    vec_i candiNode(n);
     vec_b rest_node(n);     //记录是否为限制点
 
     for (int k = 0; k < kk; k++) {
@@ -941,13 +856,12 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_restriction_poi
         }
 
         //寻找候选集 -- node_visited表示包含候选点的初始子图，对于kk，寻找时判断deg是否满足要求
-        //count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);   //限制点不包含在visited数组中
-        count = i_search_candi_restrict_point(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num, rest_node);   //限制点不包含在visited数组中
+        count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);   //限制点不包含在visited数组中
         ct += count;
         //cout << "count:" << count << endl;
 
         if (count != 0) {
-            delete_update_candidate_thres(thres[k], k, count, low, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);    //初始值设为low
+            delete_update_candidate_thres(thres[k], k, count, low, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);    //初始值设为low
         }
     }
 
@@ -967,19 +881,21 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_restriction_poi
     //存在节点coreness变化
     if (kk == kmax) {  //总体core增大 -- 初始图为core增大的顶点
         kmax++;
-        ct += countNum;
+        cout << "kmax++; " << kmax << endl;
+        ct += count;
         vector<double> newRow(n, 0.0);
         thres.push_back(newRow);
 
-        std::fill(candiProb.begin(), candiProb.end(), 2);
         std::fill(node_visited_num.begin(), node_visited_num.end(), 0);
 
         //初始化kprob
         for (int i = 0; i < countNum; i++) {
             int node = candiNode[i];
             if (node_visited[node]) {
-                candiProb[i] = kprob_comp(node, node_visited, kk + 1);
-                //cout << "node:" << node << " kprob:" << candiProb[i] << endl;
+                kprob = kprob_comp(node, node_visited, kk + 1);
+                Node* initialNode = new Node(node, kprob);
+                mySet.insert(initialNode);
+                hashTable[node] = initialNode;
 
                 int d = deg[node];
                 for (int j = 0; j < d; j++) {
@@ -992,53 +908,67 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_restriction_poi
         }
 
         //只计算core改变的点
-        int index;
         double curThres = 0.0;
         while (count) {
-            int minIndex = 0;
-            int minV = candiNode[0];
-            double p = candiProb[0];
-            for (int i = 1; i < countNum; i++) {
-                if (p > candiProb[i]) {
-                    p = candiProb[i];
-                    minV = candiNode[i];
-                    minIndex = i;
-                }
-            }
+            auto it = mySet.begin();
+            Node* minValueNode = *(it);
+            int minV = minValueNode->id;
+            double p = minValueNode->value;
+
             curThres = max(curThres, p);
             thres[kk][minV] = curThres;
+            mySet.erase(it);
+            hashTable.erase(minV);
+            delete minValueNode;
             //cout << "minV:" << minV << " thres:" << curThres << endl;
 
             node_visited[minV] = false;
-            candiProb[minIndex] = 2;
             count--;
             //更新其邻居
             for (int t = 0; t < deg[minV]; t++) {
                 int w = adj[minV][t].u;
                 if (node_visited[w]) {
+                    Node* neiNode = hashTable[w];
+                    it = mySet.find(neiNode);
+                    mySet.erase(it);
                     node_visited_num[w]--;
-                    index = candiReverseIndex[w];
+
                     if (node_visited_num[w] < kk + 1) {
-                        candiProb[index] = 0;
+                        kprob = 0;
                     }
                     else
                     {
-                        candiProb[index] = kprob_comp(w, node_visited, kk + 1);
+                        kprob = kprob_comp(w, node_visited, kk + 1);
                     }
+                    neiNode->value = kprob;
+                    mySet.insert(neiNode);
+                    hashTable[w] = neiNode;
                 }
             }
         }
+
+        // 释放剩余节点的内存
+        for (auto node : mySet) {
+            delete node;
+        }
+        mySet.clear();
+
+        // 清空哈希表
+        for (auto pair : hashTable) {
+            delete pair.second;
+        }
+        hashTable.clear();
     }
     else
     {
         //可以直接访问thres，low=0，计算up（必然不为0）
-        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);  //利用确定图的搜索算法 -- 已排除限制点
+        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
-        cout << "kmin+1 - count:" << count << endl;
+        //cout << "kmin+1 - count:" << count << endl;
 
         //更新候选集thres
         if (count != 0) {
-            insert_update_candidate_thres(thres[kk], kk, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            insert_update_candidate_thres(thres[kk], kk, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -1065,7 +995,7 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
                 if (fabs(kthres[w] - low) < EPSILON) {
                     testSet.insert(w);
                 }
-            }            
+            }
         }
 
         for (int t = 0; t < deg[v]; t++) {
@@ -1076,7 +1006,7 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
                 }
             }
         }
-        std::cout << "限制点需要判断的数量：" << testSet.size() << endl;
+        //std::cout << "限制点需要判断的数量：" << testSet.size() << endl;
 
         vec_b visited(n, false);    //所有th = low的邻居 都使用该visited数组计算kprob
         for (const auto& node : testSet) {
@@ -1084,7 +1014,7 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
                 int w = adj[node][t].u;
                 if ((kthres[w] - low) >= -EPSILON) {
                     visited[w] = true;
-                }                
+                }
             }
             double kprob = kprob_comp(node, visited, k + 1);
             if (fabs(kprob - low) < EPSILON) {
@@ -1195,7 +1125,7 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
                 }
             }
         }
-        std::cout << "v的限制点数量：" << ct << endl;
+        //std::cout << "v的限制点数量：" << ct << endl;
 
         vec_b visited(deg[v], false);
         for (int t = 0; t < deg[v]; t++) {
@@ -1204,7 +1134,7 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
                 if ((kthres[w] - low) >= -EPSILON) {
                     visited[t] = true;
                 }
-            }            
+            }
         }
         /*for (const auto& node : restNodes) {
             visited[node] = false;
@@ -1213,73 +1143,27 @@ void Uncertain_Core::i_singlepoint_compute_restriction_point(vector<double>& kth
     }
 }
 
-//候选集不包括限制点（不向后传播）
-int Uncertain_Core::i_search_candi_restrict_point(vector<double>& kthres, double low, double upper, int root, int k, vec_b& visited, vec_i& candiNode, vec_d& candiProb, vec_i& candiRIndex, vec_i& neiNum, vec_b& restRecord) {
-    int count = 0;
-    std::fill(candiRIndex.begin(), candiRIndex.end(), -1);
-    std::fill(neiNum.begin(), neiNum.end(), 0);
-    std::fill(visited.begin(), visited.end(), false);
-    //初始化需要访问的节点
-    for (int i = 0; i < n; i++) {
-        if (!restRecord[i] && ((kthres[i] - low) >= -EPSILON)) {
-            visited[i] = true;
-        }
-    }
 
-    std::queue<int> que;    //候选处理que
-    vec_b visitedCandi(n, false);    //visited包含可能变大的数组
-    que.push(root);
-    visitedCandi[root] = true;
-    while (!que.empty()) {
-        int node = que.front();
-        que.pop();
-
-        candiNode[count] = node;    //候选节点
-        candiRIndex[node] = count;
-        if (node == root) {
-            candiProb[count] = upper;
-        }
-        else
-        {
-            candiProb[count] = kprob_comp(node, visited, k + 1);
-            //cout << "node:" << node << " kprob:" << candiProb[count] << endl;
-        }
-        int d = deg[node];
-        for (int i = 0; i < d; i++) {
-            int w = adj[node][i].u;
-            if (!restRecord[w] && ((kthres[w] - low) >= -EPSILON)) {
-                neiNum[node]++;
-                if (!visitedCandi[w] && ((upper - kthres[w]) > EPSILON)) {
-                    que.push(w);
-                    visitedCandi[w] = true;
-                    //cout << "候选对象：" << w << endl;
-                }
-            }
-        }
-        count++;
-    }
-    return count;
-}
 
 //批量确定候选点的thres
 vector<vector<double> > Uncertain_Core::insert_threshold_compute_batchUP(vector<vector<double> >& thres, int u, int v, double& time, int& ct) {
     double tm = omp_get_wtime();
 
-    std::cout << "根据原始图计算上下界--------" << endl;
     int kk = min(core[u], core[v]);
     vector<vector<double> > range(2, vector<double>(kk));
     std::cout << "kk:" << kk << endl;
-    double low, up;
+    double low, up, kprob;
     int root;
 
     int count;
     ct = 0;
     int countNum;
-    vec_i candiNode(n);
-    vec_d candiProb(n);     //大小为count，降低比较复杂度
     vec_i candiReverseIndex(n); //为candi index与node index建立关联
     vec_i node_visited_num(n);  //每个候选节点的度数 -- 大小为n
     vec_b node_visited(n);      //用n映射该节点是否要访问
+    std::set<Node*, NodePtrComparator> mySet;
+    std::map<int, Node*> hashTable;
+    vec_i candiNode(n);
 
     for (int k = 0; k < kk; k++) {
         //std::cout << "k:" << k << endl;  
@@ -1287,19 +1171,16 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_batchUP(vector<
         insert_threshold_singlepoint_compute(thres[k], low, up, root, u, v, k);
         range[0][k] = low;
         range[1][k] = up;
-        //是否需要判断low、up的大小
-        /*if ((low - up) >= -EPSILON) {
-            continue;
-        }*/
+
 
         //寻找候选集 -- node_visited表示包含候选点的初始子图，对于kk，寻找时判断deg是否满足要求
-        count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
+        count = insert_search_candi(thres[k], low, up, root, k, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
         //cout << "count:" << count << endl;
 
         if (count != 0) {
-            //insert_update_candidate_thres(thres[k], k, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
-            d_batch_update_candidate(thres[k], k, count, low, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            d_batch_update_candidate(thres[k], k, count, low, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);  
+            //insert_update_candidate_thres(thres[k], k, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -1320,19 +1201,21 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_batchUP(vector<
     //存在节点coreness变化
     if (kk == kmax) {  //总体core增大 -- 初始图为core增大的顶点
         kmax++;
+        cout << "kmax++; " << kmax << endl;
         ct += count;
         vector<double> newRow(n, 0.0);
         thres.push_back(newRow);
 
-        std::fill(candiProb.begin(), candiProb.end(), 2);
         std::fill(node_visited_num.begin(), node_visited_num.end(), 0);
 
         //初始化kprob
         for (int i = 0; i < countNum; i++) {
             int node = candiNode[i];
             if (node_visited[node]) {
-                candiProb[i] = kprob_comp(node, node_visited, kk + 1);
-                //cout << "node:" << node << " kprob:" << candiProb[i] << endl;
+                kprob = kprob_comp(node, node_visited, kk + 1);
+                Node* initialNode = new Node(node, kprob);
+                mySet.insert(initialNode);
+                hashTable[node] = initialNode;
 
                 int d = deg[node];
                 for (int j = 0; j < d; j++) {
@@ -1345,54 +1228,69 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_batchUP(vector<
         }
 
         //只计算core改变的点
-        int index;
         double curThres = 0.0;
         while (count) {
-            int minIndex = 0;
-            int minV = candiNode[0];
-            double p = candiProb[0];
-            for (int i = 1; i < countNum; i++) {
-                if (p > candiProb[i]) {
-                    p = candiProb[i];
-                    minV = candiNode[i];
-                    minIndex = i;
-                }
-            }
+            auto it = mySet.begin();
+            Node* minValueNode = *(it);
+            int minV = minValueNode->id;
+            double p = minValueNode->value;
+
             curThres = max(curThres, p);
             thres[kk][minV] = curThres;
+            mySet.erase(it);
+            hashTable.erase(minV);
+            delete minValueNode;
             //cout << "minV:" << minV << " thres:" << curThres << endl;
 
             node_visited[minV] = false;
-            candiProb[minIndex] = 2;
             count--;
             //更新其邻居
             for (int t = 0; t < deg[minV]; t++) {
                 int w = adj[minV][t].u;
                 if (node_visited[w]) {
+                    Node* neiNode = hashTable[w];
+                    it = mySet.find(neiNode);
+                    mySet.erase(it);
                     node_visited_num[w]--;
-                    index = candiReverseIndex[w];
+
                     if (node_visited_num[w] < kk + 1) {
-                        candiProb[index] = 0;
+                        kprob = 0;
                     }
                     else
                     {
-                        candiProb[index] = kprob_comp(w, node_visited, kk + 1);
+                        kprob = kprob_comp(w, node_visited, kk + 1);
                     }
+                    neiNode->value = kprob;
+                    mySet.insert(neiNode);
+                    hashTable[w] = neiNode;
                 }
             }
         }
+
+        // 释放剩余节点的内存
+        for (auto node : mySet) {
+            delete node;
+        }
+        mySet.clear();
+
+        // 清空哈希表
+        for (auto pair : hashTable) {
+            delete pair.second;
+        }
+        hashTable.clear();
+
     }
     else
     {
         //可以直接访问thres，low=0，计算up（必然不为0）
-        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);
+        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
-        cout << "kmin+1 - count:" << count << endl;
+        //cout << "kmin+1 - count:" << count << endl;
 
         //更新候选集thres
         if (count != 0) {
-            //insert_update_candidate_thres(thres[kk], kk, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
-            d_batch_update_candidate(thres[kk], kk, count, 0, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            //d_batch_update_candidate(thres[kk], kk, count, 0, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
+            insert_update_candidate_thres(thres[kk], kk, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -1401,25 +1299,26 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_batchUP(vector<
 }
 
 
+
 //新增边：优化方案的结合
 vector<vector<double> > Uncertain_Core::insert_threshold_compute_opt(vector<vector<double> >& thres, int u, int v, double& time, int& ct) {
     double tm = omp_get_wtime();
 
-    std::cout << "根据原始图计算上下界--------" << endl;
     int kk = min(core[u], core[v]);
     vector<vector<double> > range(2, vector<double>(kk));
-    std::cout << "kk:" << kk << endl;
-    double low, up;
+    //std::cout << "kk:" << kk << endl;
+    double low, up, kprob;
     int root;
 
     int count;
     ct = 0;
     int countNum;
-    vec_i candiNode(n);
-    vec_d candiProb(n);     //大小为count，降低比较复杂度
     vec_i candiReverseIndex(n); //为candi index与node index建立关联
     vec_i node_visited_num(n);  //每个候选节点的度数 -- 大小为n
     vec_b node_visited(n);      //用n映射该节点是否要访问
+    std::set<Node*, NodePtrComparator> mySet;
+    std::map<int, Node*> hashTable;
+    vec_i candiNode(n);
     vec_b rest_node(n);     //记录是否为限制点
 
     for (int k = 0; k < kk; k++) {
@@ -1433,17 +1332,17 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_opt(vector<vect
             continue;
         }
 
+
         //寻找候选集 -- node_visited表示包含候选点的初始子图，对于kk，寻找时判断deg是否满足要求
-        count = i_candi_dynamic_update_range(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);   //限制点不包含在visited数组中
-        //限制点不包含在visited数组中 -- 优化较小 直接省略
-        //count = i_search_candi_restrict_point(thres[k], low, up, root, k, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num, rest_node);   
+        count = i_candi_dynamic_update_range(thres[k], low, up, root, k, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
         //cout << "count:" << count << endl;
 
         if (count != 0) {
-            delete_update_candidate_thres(thres[k], k, count, low, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            d_batch_update_candidate(thres[k], k, count, low, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
+
 
     //k = kk：确定图core维护算法 -- 是否有点的coreness改变
     root = u;
@@ -1461,19 +1360,21 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_opt(vector<vect
     //存在节点coreness变化
     if (kk == kmax) {  //总体core增大 -- 初始图为core增大的顶点
         kmax++;
-        ct += countNum;
+        cout << "kmax++; " << kmax << endl;
+        ct += count;
         vector<double> newRow(n, 0.0);
         thres.push_back(newRow);
 
-        std::fill(candiProb.begin(), candiProb.end(), 2);
         std::fill(node_visited_num.begin(), node_visited_num.end(), 0);
 
         //初始化kprob
         for (int i = 0; i < countNum; i++) {
             int node = candiNode[i];
             if (node_visited[node]) {
-                candiProb[i] = kprob_comp(node, node_visited, kk + 1);
-                //cout << "node:" << node << " kprob:" << candiProb[i] << endl;
+                kprob = kprob_comp(node, node_visited, kk + 1);
+                Node* initialNode = new Node(node, kprob);
+                mySet.insert(initialNode);
+                hashTable[node] = initialNode;
 
                 int d = deg[node];
                 for (int j = 0; j < d; j++) {
@@ -1486,53 +1387,68 @@ vector<vector<double> > Uncertain_Core::insert_threshold_compute_opt(vector<vect
         }
 
         //只计算core改变的点
-        int index;
         double curThres = 0.0;
         while (count) {
-            int minIndex = 0;
-            int minV = candiNode[0];
-            double p = candiProb[0];
-            for (int i = 1; i < countNum; i++) {
-                if (p > candiProb[i]) {
-                    p = candiProb[i];
-                    minV = candiNode[i];
-                    minIndex = i;
-                }
-            }
+            auto it = mySet.begin();
+            Node* minValueNode = *(it);
+            int minV = minValueNode->id;
+            double p = minValueNode->value;
+
             curThres = max(curThres, p);
             thres[kk][minV] = curThres;
+            mySet.erase(it);
+            hashTable.erase(minV);
+            delete minValueNode;
             //cout << "minV:" << minV << " thres:" << curThres << endl;
 
             node_visited[minV] = false;
-            candiProb[minIndex] = 2;
             count--;
             //更新其邻居
             for (int t = 0; t < deg[minV]; t++) {
                 int w = adj[minV][t].u;
                 if (node_visited[w]) {
+                    Node* neiNode = hashTable[w];
+                    it = mySet.find(neiNode);
+                    mySet.erase(it);
                     node_visited_num[w]--;
-                    index = candiReverseIndex[w];
+
                     if (node_visited_num[w] < kk + 1) {
-                        candiProb[index] = 0;
+                        kprob = 0;
                     }
                     else
                     {
-                        candiProb[index] = kprob_comp(w, node_visited, kk + 1);
+                        kprob = kprob_comp(w, node_visited, kk + 1);
                     }
+                    neiNode->value = kprob;
+                    mySet.insert(neiNode);
+                    hashTable[w] = neiNode;
                 }
             }
         }
+
+        // 释放剩余节点的内存
+        for (auto node : mySet) {
+            delete node;
+        }
+        mySet.clear();
+
+        // 清空哈希表
+        for (auto pair : hashTable) {
+            delete pair.second;
+        }
+        hashTable.clear();
     }
     else
     {
         //可以直接访问thres，low=0，计算up（必然不为0）
-        count = i_candi_core_change_update_range(thres[kk], u, v, kk, node_visited, candiNode, candiProb, candiReverseIndex, node_visited_num);  //利用确定图的搜索算法 -- 已排除限制点
+        count = insert_search_candi_core_change(thres[kk], u, v, kk, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         ct += count;
-        cout << "kmin+1 - count:" << count << endl;
+        //cout << "kmin+1 - count:" << count << endl;
 
         //更新候选集thres
         if (count != 0) {
-            insert_update_candidate_thres(thres[kk], kk, count, candiNode, candiProb, node_visited, candiReverseIndex, node_visited_num);
+            //d_batch_update_candidate(thres[kk], kk, count, low, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
+            insert_update_candidate_thres(thres[kk], kk, count, node_visited, candiReverseIndex, node_visited_num, mySet, hashTable);
         }
     }
 
@@ -1590,14 +1506,14 @@ bool Uncertain_Core::compareArraysTrueOrFalse(const std::vector<std::vector<doub
 
     for (size_t i = 0; i < array2.size(); ++i) {
         // 检查每个子数组的长度是否相同
-        if (array1[i].size() != array2[i].size()) {   
+        if (array1[i].size() != array2[i].size()) {
             cout << "每个子数组的长度not相同!" << endl;
             return false;
         }
 
         // 比较每个子数组中对应位置的元素
         for (size_t j = 0; j < array1[i].size(); ++j) {
-            if (std::fabs(array1[i][j] - array2[i][j]) >= EPSILON) {
+            if (std::fabs(array1[i][j] - array2[i][j]) >= EPSILON1) {
                 cout << "i:" << i << " j:" << j << " candidata:" << array1[i][j] << "recompute: " << array2[i][j] << endl;
                 return false;
             }
@@ -1613,7 +1529,7 @@ bool Uncertain_Core::compareKsizeArraysTrueOrFalse(const std::vector<std::vector
     bool flag = true;
     for (size_t i = 0; i < k; i++) {
         for (size_t j = 0; j < array1[i].size(); ++j) {
-            if (std::fabs(array1[i][j] - array2[i][j]) >= EPSILON) {
+            if (std::fabs(array1[i][j] - array2[i][j]) >= EPSILON1) {
                 cout << "k:" << i << " vector:" << j << " candi:" << array1[i][j] << " recompute:" << array2[i][j] << endl;
                 flag = false;
             }
