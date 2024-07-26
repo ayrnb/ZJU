@@ -17,15 +17,15 @@ void load_cores(const char* str, vec_i& cores)
 
 	int n = 0;
 	FILE* in = NULL;
-	if (txt != NULL) in = fopen(str, "r");	//ÒÔÎÄ±¾¶ÁÈ¡Ä£Ê½´ò¿ªÎÄ¼þ
-	else in = fopen(str, "rb");		//ÒÔ¶þ½øÖÆÄ£Ê½´ò¿ªÎÄ¼þ
+	if (txt != NULL) in = fopen(str, "r");	//ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½È¡Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
+	else in = fopen(str, "rb");		//ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
 
 	if (in == NULL) {
 		printf("No such file: %s\n", str);
 		exit(1);
 	}
 	if (txt != NULL) {
-		int x = fscanf(in, "%d", &n);	//x±íÊ¾³É¹¦¶ÁÈ¡µÄÏîÊý
+		int x = fscanf(in, "%d", &n);	//xï¿½ï¿½Ê¾ï¿½É¹ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		printf("file=%s, n=%d\n", str, n);
 		cores.resize(n);
 		for (int i = 0; i < n; ++i)
@@ -41,7 +41,7 @@ void load_cores(const char* str, vec_i& cores)
 	fclose(in);
 }
 
-void prinf_core(const char* str, vec_i& cores)	//Ê×ÏÈ´æ´¢¶¥µã¸öÊýn£¬È»ºóÒÀ´Î´æ´¢c(i)
+void prinf_core(const char* str, vec_i& cores)	//ï¿½ï¿½ï¿½È´æ´¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½nï¿½ï¿½È»ï¿½ï¿½ï¿½ï¿½ï¿½Î´æ´¢c(i)
 {
 	const char* txt = strstr(str, "txt");
 	const char* bin = strstr(str, "bin");
@@ -51,8 +51,8 @@ void prinf_core(const char* str, vec_i& cores)	//Ê×ÏÈ´æ´¢¶¥µã¸öÊýn£¬È»ºóÒÀ´Î´æ´¢
 	}
 	int n = cores.size();
 	FILE* in = NULL;
-	if (bin != NULL) in = fopen(str, "wb");	//ÒÔ¶þ½øÖÆÐ´ÈëÄ£Ê½´ò¿ªÎÄ¼þ
-	else in = fopen(str, "w");		//ÒÔÎÄ±¾Ð´ÈëÄ£Ê½´ò¿ªÎÄ¼þ
+	if (bin != NULL) in = fopen(str, "wb");	//ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
+	else in = fopen(str, "w");		//ï¿½ï¿½ï¿½Ä±ï¿½Ð´ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
 
 	if (in == NULL) {
 		printf("No such file: %s\n", str);
@@ -65,14 +65,14 @@ void prinf_core(const char* str, vec_i& cores)	//Ê×ÏÈ´æ´¢¶¥µã¸öÊýn£¬È»ºóÒÀ´Î´æ´¢
 	}
 	else {
 		//printf("n=%d\n", n);
-		fprintf(in, "%d\n", n);		//ÒÔÎÄ±¾ÐÎÊ½Ð´ÈëÎÄ¼þ
+		fprintf(in, "%d\n", n);		//ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½Ê½Ð´ï¿½ï¿½ï¿½Ä¼ï¿½
 		for (int i = 0; i < n; ++i)
 			fprintf(in, "%d\n", cores[i]);
 	}
 	fclose(in);
 }
 
-//´óÍ¼´æ´¢ÔÚbinÎÄ¼þÖÐ--¶ÁÈ¡ËÙ¶È¸ü¿ì
+//ï¿½ï¿½Í¼ï¿½æ´¢ï¿½ï¿½binï¿½Ä¼ï¿½ï¿½ï¿½--ï¿½ï¿½È¡ï¿½Ù¶È¸ï¿½ï¿½ï¿½
 void printf_thres(const std::string& filePath, const std::vector<std::vector<double> >& thres) {
 	size_t txtPos = filePath.find(".txt");
 	size_t binPos = filePath.find(".bin");
@@ -83,8 +83,8 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 	int k = thres.size();
 	int n = thres[0].size();
 	FILE* in = NULL;
-	if (binPos != std::string::npos) in = fopen(filePath.c_str(), "wb");    //ÒÔ¶þ½øÖÆÐ´ÈëÄ£Ê½´ò¿ªÎÄ¼þ
-	else in = fopen(filePath.c_str(), "w");        //ÒÔÎÄ±¾Ð´ÈëÄ£Ê½´ò¿ªÎÄ¼þ
+	if (binPos != std::string::npos) in = fopen(filePath.c_str(), "wb");    //ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
+	else in = fopen(filePath.c_str(), "w");        //ï¿½ï¿½ï¿½Ä±ï¿½Ð´ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Ä¼ï¿½
 
 	if (in == NULL) {
 		printf("No such file: %s\n", filePath.c_str());
@@ -101,7 +101,7 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 		}
 	}
 	else {
-		for (int i = 0; i < k; i++) {	//txtÎÄ¼þ - ¿É¶ÁÐÔ¸üÇ¿
+		for (int i = 0; i < k; i++) {	//txtï¿½Ä¼ï¿½ - ï¿½É¶ï¿½ï¿½Ô¸ï¿½Ç¿
 			fprintf(in, "%d :\n", i);
 			for (int j = 0; j < n; j++) {
 				fprintf(in, "%d :", j);
@@ -113,7 +113,7 @@ void printf_thres(const std::string& filePath, const std::vector<std::vector<dou
 }
 
 
-//Ê¹ÓÃbinÎÄ¼þ¶ÁÈ¡thres
+//Ê¹ï¿½ï¿½binï¿½Ä¼ï¿½ï¿½ï¿½È¡thres
 void load_thres(const std::string& filePath, std::vector<std::vector<double> >& thres) {
 	double tm = omp_get_wtime();
 	size_t binPos = filePath.find(".bin");
@@ -138,16 +138,16 @@ void load_thres(const std::string& filePath, std::vector<std::vector<double> >& 
 		}
 	}
 	tm = omp_get_wtime() - tm;
-	std::cout << "¶ÁÈ¡³õÊ¼thresÎÄ¼þ---- time£º" << tm << endl;
+	std::cout << "ï¿½ï¿½È¡ï¿½ï¿½Ê¼thresï¿½Ä¼ï¿½---- timeï¿½ï¿½" << tm << endl;
 }
 
 
 
-//²åÈë±ßµÄ³õÊ¼¸üÐÂËã·¨
+//ï¿½ï¿½ï¿½ï¿½ßµÄ³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨
 vector<vector<double> > insertEdges(string infile, string parentPath, double scale) {
 	Uncertain_Core uc;
 
-	//´ÓÔ­Êý¾ÝÎÄ¼þ Ëæ»úÑ¡Ôñ ³õÊ¼±ß ¹¹½¨³õÊ¼Í¼
+	//ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ ï¿½ï¿½Ê¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼Í¼
 	uc.edge_selected_bin(infile, scale);	//scale - unselected
 
 	int n = uc.get_nm();
@@ -157,31 +157,31 @@ vector<vector<double> > insertEdges(string infile, string parentPath, double sca
 	vector<vector<double> > thres(kmax, vector<double>(n));
 	uc.Initial_threshold_compute_map(thres);
 
-	//std::string thresInFile = parentPath + "/datas/decomposition/d-initial-Flickr.bin";	//¶ÁÈ¡·Ö½âÎÄ¼þ
+	//std::string thresInFile = parentPath + "/datas/decomposition/d-initial-Flickr.bin";	//ï¿½ï¿½È¡ï¿½Ö½ï¿½ï¿½Ä¼ï¿½
 	//load_thres(thresInFile, thres);	
 
-	//È·¶¨Í¼²åÈë±ß
+	//È·ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½
 	//uc.insert_core_compare();
 	uc.insert_threshold_compare(thres);
 	return thres;
 }
 
 
-//É¾³ý±ßµÄ³õÊ¼¸üÐÂËã·¨
+//É¾ï¿½ï¿½ï¿½ßµÄ³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ã·¨
 void deleteEdges(string readfile, string parentPath, double scale) {
 	Uncertain_Core uc;
 	uc.read_bin(readfile);
 	int n = uc.get_nm();
 	uc.get_core();
 	int kmax = uc.get_kmax();
-	vector<vector<double> > thres(kmax, vector<double>(n));	//³õÊ¼¼ÆËã ¡ª¡ª Ðè´æ´¢£¬then¶ÁÈ¡¼´¿É
+	vector<vector<double> > thres(kmax, vector<double>(n));	//ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½æ´¢ï¿½ï¿½thenï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
 
-	//³õÊ¼¼ÆËãthres	
+	//ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½thres	
 	uc.Initial_threshold_compute_map(thres);
 	//std::string thresInFile = parentPath + "/maintence datas/d-initial-try.bin";
 	//printf_thres(thresInFile, thres);
 
-	//¶ÁÈ¡thres	
+	//ï¿½ï¿½È¡thres	
 	//load_thres(thresInFile, thres);
 
 	uc.delete_threshold_compare(thres, scale);
@@ -194,20 +194,20 @@ void deleteEdges(string readfile, string parentPath, double scale) {
 
 int main()
 {
-	// »ñÈ¡ main.cpp µÄÂ·¾¶¡¢mainËùÔÚÄ¿Â¼£¬Êý¾ÝÎÄ¼þÏà¶ÔÓÚmain.cpp µÄÏà¶ÔÂ·¾¶¡¢¹¹½¨Êý¾ÝÎÄ¼þµÄ¾ø¶ÔÂ·¾¶
+	// ï¿½ï¿½È¡ main.cpp ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½mainï¿½ï¿½ï¿½ï¿½Ä¿Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½main.cpp ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 	std::string currentPath = __FILE__;
 	std::string parentPath = getParentDirectory(currentPath);
 	std::string dataFilePath = "datas/Fruit-Fly.bin";	
 	std::string infile = parentPath + "/" + dataFilePath;
 
-	double scale = 0.8;		//Ñ¡ÔñËæ»ú±ß
+	double scale = 0.8;		//Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	insertEdges(infile, parentPath, scale);	
-	//deleteEdges(infile, parentPath, scale);
+	deleteEdges(infile, parentPath, scale);
 	return 0;
 	
 	
 	Probability_Core pc;
-	//pc.creat_bin(infile);	//´´½¨binÎÄ¼þ
+	//pc.creat_bin(infile);	//ï¿½ï¿½ï¿½ï¿½binï¿½Ä¼ï¿½
 
 	pc.read_bin(infile);
 	int n = pc.get_nm();
@@ -215,14 +215,14 @@ int main()
 	double tm = omp_get_wtime();
 	pc.get_core();
 	int kmax = pc.get_kmax();
-	vector<vector<double> > thres(kmax, vector<double>(n));	//³õÊ¼¼ÆËã ¡ª¡ª Ðè´æ´¢£¬then¶ÁÈ¡¼´¿É
+	vector<vector<double> > thres(kmax, vector<double>(n));	//ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½æ´¢ï¿½ï¿½thenï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
 	pc.Initial_threshold_compute_map(thres);
 	tm = omp_get_wtime() - tm;
 	std::cout << "Time:" << tm << endl;
 
 
-	//pc.increase_threshold_compare(thres, 0.8, 1000);	//±ßÔµ¸ÅÂÊÔö¼Ó
-	//pc.decrease_threshold_compare(thres, 0.8, 1000);	//±ßÔµ¸ÅÂÊ¼õÐ¡
+	pc.increase_threshold_compare(thres, 0.8, 1000);	//ï¿½ï¿½Ôµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	pc.decrease_threshold_compare(thres, 0.8, 1000);	//ï¿½ï¿½Ôµï¿½ï¿½ï¿½Ê¼ï¿½Ð¡
 
 
 	//save decomposition result
